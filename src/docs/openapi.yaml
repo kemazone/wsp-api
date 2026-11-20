@@ -287,6 +287,15 @@ paths:
       requestBody: { required: true, content: { application/json: { schema: { type: object, required: [pin], properties: { pin: { type: string, example: '123456' } } } } } }
       responses: { '200': { description: OK } }
 
+  /api/admin/numeros/{id}/probar:
+    post:
+      tags: [Administración]
+      summary: Enviar un mensaje de prueba desde el número (por defecto la plantilla hello_world)
+      security: [{ AdminToken: [] }]
+      parameters: [{ $ref: '#/components/parameters/id' }]
+      requestBody: { required: true, content: { application/json: { schema: { type: object, required: [para], properties: { para: { type: string }, plantilla: { type: string, default: hello_world }, idioma: { type: string, default: en_US }, texto: { type: string, description: 'Si se indica, manda texto libre (solo dentro de la ventana de 24 h)' } } } } } }
+      responses: { '201': { description: Enviado } }
+
   /api/webhook/meta:
     get:
       tags: [Webhook Meta]

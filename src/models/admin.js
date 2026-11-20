@@ -82,4 +82,13 @@ async function registrarNumero(id, b = {}) {
   const n = await R.numeros.porId(id); return cliente.registrarNumero(n, token(n), b.pin);
 }
 
-module.exports = { listarEmpresas, crearEmpresa, actualizarEmpresa, crearApiKey, listarApiKeys, revocarApiKey, crearNumero, actualizarNumero, listarNumeros, verificarNumero, suscribirWebhook, registrarNumero };
+// Envío de prueba desde un número (por defecto la plantilla hello_world, que traen todas las cuentas)
+async function probarNumero(id, b = {}) {
+  const n = await R.numeros.porId(id);
+  if (!b.para) throw err('Falta para (número de destino)');
+  const Mensajes = require('./mensajes');
+  const cuerpo = b.texto ? { para: b.para, texto: b.texto } : { para: b.para, plantilla: { nombre: b.plantilla || 'hello_world', idioma: b.idioma || 'en_US' } };
+  return Mensajes.enviar(n.EmpresaId, { ...cuerpo, numero: n.phoneNumberId, referencia: 'prueba-admin' });
+}
+
+module.exports = { probarNumero, listarEmpresas, crearEmpresa, actualizarEmpresa, crearApiKey, listarApiKeys, revocarApiKey, crearNumero, actualizarNumero, listarNumeros, verificarNumero, suscribirWebhook, registrarNumero };

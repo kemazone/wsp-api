@@ -51,6 +51,7 @@ const admin = {
   verificarNumero: (req) => Admin.verificarNumero(req.params.id),
   suscribirWebhook: (req) => Admin.suscribirWebhook(req.params.id),
   registrarNumero: (req) => Admin.registrarNumero(req.params.id, req.body),
+  probarNumero: async (req, res) => res.status(201).json(await Admin.probarNumero(req.params.id, req.body)),
 };
 
 const webhook = {

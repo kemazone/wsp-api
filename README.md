@@ -26,6 +26,8 @@ integración queda encapsulado acá.
 - **Plantillas**: listado con su estado de aprobación.
 - **Administración**: empresas, API keys (solo se guarda el hash), números (token cifrado con AES-256-GCM),
   diagnóstico de la configuración en Meta y suscripción del webhook de la cuenta.
+- **Pantalla de administración** en **`/admin`** (pide el `ADMIN_TOKEN`): empresas, números (alta, edición,
+  verificación en Meta, suscripción al webhook, registro con PIN, envío de prueba) y API keys.
 - Documentación interactiva en **`/api/docs`** (OpenAPI en `src/docs/openapi.yaml`).
 
 ## Estructura

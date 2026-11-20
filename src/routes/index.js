@@ -47,6 +47,7 @@ a.patch('/numeros/:id', h(C.admin.actualizarNumero));
 a.get('/numeros/:id/verificar', h(C.admin.verificarNumero));
 a.post('/numeros/:id/suscribir-webhook', h(C.admin.suscribirWebhook));
 a.post('/numeros/:id/registrar', h(C.admin.registrarNumero));
+a.post('/numeros/:id/probar', h(C.admin.probarNumero));
 r.use('/admin', a);
 
 r.use((req, res) => res.status(404).json({ error: `No existe ${req.method} ${req.baseUrl}${req.path}` }));

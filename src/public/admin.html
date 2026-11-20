@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>wsp-api · Administración</title>
+<style>
+  :root {
+    --bg: #f4f6f5; --panel: #fff; --text: #17201b; --muted: #5d6b63; --line: #dfe5e1;
+    --accent: #128c4a; --accent-2: #0d6b38; --accent-soft: #e5f4ea;
+    --danger: #c0392b; --danger-soft: #fbe9e7; --warn: #a66a00; --warn-soft: #fff3d6;
+    --radius: 10px; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 2px 8px rgba(0,0,0,.04);
+    --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+  button, input, select { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .mono { font-family: var(--mono); font-size: 12.5px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+
+  /* barra superior */
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 10px 18px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header .logo { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 650; }
+  header .ver { color: var(--muted); font-size: 12px; }
+  header .esp { flex: 1; }
+  #btnMenu { display: none; }
+
+  /* botones */
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { border-color: #b9c4bd; }
+  .btn:disabled { opacity: .55; cursor: default; }
+  .btn.pri { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.pri:hover { background: var(--accent-2); }
+  .btn.peligro { color: var(--danger); }
+  .btn.chico { padding: 4px 9px; font-size: 12.5px; }
+  .btn.link { border: 0; background: none; color: var(--accent-2); padding: 2px 4px; }
+
+  /* estructura */
+  .layout { display: grid; grid-template-columns: 250px 1fr; min-height: calc(100vh - 53px); }
+  aside { border-right: 1px solid var(--line); background: var(--panel); padding: 14px 10px; }
+  aside h2 { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 4px 8px 8px; display: flex; justify-content: space-between; align-items: center; }
+  .emp { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+  .emp:hover { background: var(--bg); }
+  .emp.sel { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+  main { padding: 20px 24px 40px; min-width: 0; }
+  .titulo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .titulo h2 { margin: 0; font-size: 20px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+  .tab { border: 0; background: none; padding: 9px 14px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+  .tab.sel { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+
+  /* tarjetas de números */
+  .grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .card.inactivo { opacity: .7; }
+  .card .cab { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .card .tel { font-size: 19px; font-weight: 650; letter-spacing: .01em; }
+  .card dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 0; }
+  .card dt { color: var(--muted); font-size: 12.5px; }
+  .card dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .card .acc { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--line); }
+  .badges { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .badge { font-size: 11.5px; padding: 2px 8px; border-radius: 99px; background: var(--bg); color: var(--muted); border: 1px solid var(--line); white-space: nowrap; }
+  .badge.ok { background: var(--accent-soft); color: var(--accent-2); border-color: #bfe3cc; }
+  .badge.warn { background: var(--warn-soft); color: var(--warn); border-color: #f0d79b; }
+  .badge.mal { background: var(--danger-soft); color: var(--danger); border-color: #f2c4bd; }
+  .copiar { cursor: pointer; border-bottom: 1px dashed #b9c4bd; }
+  .vacio { text-align: center; padding: 40px 20px; background: var(--panel); border: 1px dashed var(--line); border-radius: var(--radius); color: var(--muted); }
+  .vacio p { margin: 4px 0 14px; }
+
+  /* tabla */
+  .tabla { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .tabla th, .tabla td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  .tabla th { font-size: 12px; color: var(--muted); font-weight: 600; background: #fafbfa; }
+  .tabla tr:last-child td { border-bottom: 0; }
+
+  /* login */
+  .login { max-width: 420px; margin: 12vh auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 28px; box-shadow: var(--shadow); }
+  .login h2 { margin: 0 0 4px; }
+
+  /* formularios y modales */
+  label { display: block; font-weight: 600; font-size: 13px; margin: 12px 0 4px; }
+  .ayuda { font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 3px; }
+  input[type=text], input[type=password], input[type=tel], select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  input:focus, select:focus, button:focus-visible { outline: 2px solid #9fd6b3; outline-offset: 1px; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  dialog { border: 0; border-radius: 14px; padding: 0; width: min(520px, calc(100vw - 24px)); box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+  dialog::backdrop { background: rgba(20,30,25,.35); }
+  dialog form, dialog .cuerpo { padding: 20px 22px; }
+  dialog h3 { margin: 0 0 4px; font-size: 17px; }
+  dialog .pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .error { background: var(--danger-soft); color: var(--danger); border-radius: 8px; padding: 8px 10px; margin-top: 12px; font-size: 13px; }
+  .clave { display: flex; gap: 8px; align-items: center; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-top: 10px; }
+  .clave code { flex: 1; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; }
+  .lista-ok { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+  .lista-ok li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; align-items: start; }
+  .ico { width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #fff; }
+  .ico.ok { background: var(--accent); } .ico.mal { background: var(--danger); } .ico.warn { background: var(--warn); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: #fff; padding: 6px 12px; cursor: pointer; }
+  .seg button.sel { background: var(--accent-soft); color: var(--accent-2); font-weight: 600; }
+
+  #toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #17201b; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13.5px; box-shadow: var(--shadow); z-index: 20; max-width: calc(100vw - 30px); }
+  #toast.mal { background: var(--danger); }
+
+  @media (max-width: 760px) {
+    #btnMenu { display: inline-flex; }
+    .layout { grid-template-columns: 1fr; }
+    aside { position: fixed; top: 53px; left: 0; bottom: 0; width: 270px; z-index: 6; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow); }
+    aside.abierto { transform: none; }
+    main { padding: 16px 14px 30px; }
+    .grilla { grid-template-columns: 1fr; }
+    .tabla .opc { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <button class="btn chico" id="btnMenu" aria-label="Empresas">☰</button>
+  <div class="logo">W</div>
+  <div><h1>wsp-api</h1><div class="ver" id="version"></div></div>
+  <div class="esp"></div>
+  <button class="btn chico" id="btnSalir" hidden>Salir</button>
+</header>
+
+<!-- ingreso -->
+<section class="login" id="vistaLogin" hidden>
+  <h2>Administración</h2>
+  <p class="muted">Ingresá el <b>ADMIN_TOKEN</b> configurado en el <span class="mono">.env</span> del servicio. Se guarda solo en esta pestaña.</p>
+  <form id="fLogin">
+    <label for="token">Token de administración</label>
+    <input type="password" id="token" autocomplete="off" required>
+    <div class="error" id="errLogin" hidden></div>
+    <div class="pie" style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn pri">Ingresar</button></div>
+  </form>
+</section>
+
+<!-- aplicación -->
+<div class="layout" id="vistaApp" hidden>
+  <aside id="aside">
+    <h2>Empresas <button class="btn link" id="btnNuevaEmpresa">+ Nueva</button></h2>
+    <div id="listaEmpresas"></div>
+  </aside>
+  <main>
+    <div id="sinEmpresas" class="vacio" hidden>
+      <b>Todavía no hay empresas</b>
+      <p>Cada empresa tiene sus números de WhatsApp y sus API keys.</p>
+      <button class="btn pri" data-accion="nuevaEmpresa">Crear la primera empresa</button>
+    </div>
+    <div id="panelEmpresa" hidden>
+      <div class="titulo">
+        <h2 id="empNombre"></h2>
+        <span id="empEstado"></span>
+        <button class="btn chico" id="btnEditarEmpresa">Editar</button>
+      </div>
+      <div class="tabs">
+        <button class="tab sel" data-tab="numeros">Números</button>
+        <button class="tab" data-tab="keys">API keys</button>
+      </div>
+      <section id="tabNumeros">
+        <div class="barra">
+          <span class="muted" id="resNumeros"></span>
+          <button class="btn pri" id="btnNuevoNumero">+ Agregar número</button>
+        </div>
+        <div id="numeros"></div>
+      </section>
+      <section id="tabKeys" hidden>
+        <div class="barra">
+          <span class="muted">Las apps (gestion-app, facturación…) se identifican con una API key. Se muestra una sola vez.</span>
+          <button class="btn pri" id="btnNuevaKey">+ Nueva API key</button>
+        </div>
+        <div id="keys"></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- empresa -->
+<dialog id="dEmpresa"><form method="dialog" id="fEmpresa">
+  <h3 id="tEmpresa">Nueva empresa</h3>
+  <label for="eNombre">Nombre</label>
+  <input type="text" id="eNombre" required maxlength="255">
+  <label class="check" id="lEActiva"><input type="checkbox" id="eActiva" checked> Activa <span class="ayuda">(si no, sus API keys dejan de funcionar)</span></label>
+  <div class="error" hidden></div>
+  <div class="pie"><button type="button" class="btn" data-cerrar>Cancelar</button><button class="btn pri">Guardar</button></div>
+</form></dialog>
+
+<!-- número -->
+<dialog id="dNumero"><form method="dialog" id="fNumero">
+  <h3 id="tNumero">Agregar número</h3>
+  <p class="muted small" style="margin:0">Los identificadores están en Meta for Developers → tu app → <b>WhatsApp → Configuración de la API</b>.</p>
+  <label for="nNombre">Nombre <span class="ayuda">para reconocerlo (ej. "Ventas", "Prueba")</span></label>
+  <input type="text" id="nNombre" maxlength="100">
+  <label for="nPhone">Identificador del número de teléfono <span class="ayuda">(Phone number ID)</span></label>
+  <input type="text" id="nPhone" class="mono" inputmode="numeric" required>
+  <label for="nWaba">Identificador de la cuenta de WhatsApp Business <span class="ayuda">(WABA ID)</span></label>
+  <input type="text" id="nWaba" class="mono" inputmode="numeric" required>
+  <label for="nToken">Access token permanente <span class="ayuda" id="aToken">token de un usuario del sistema (empieza con EAA…)</span></label>
+  <input type="password" id="nToken" class="mono" autocomplete="off">
+  <label class="check"><input type="checkbox" id="nPred"> Predeterminado <span class="ayuda">(el que se usa cuando la app no indica número)</span></label>
+  <label class="check" id="lNActivo"><input type="checkbox" id="nActivo" checked> Activo</label>
+  <div class="error" hidden></div>
+  <div class="pie"><button type="button" class="btn" data-cerrar>Cancelar</button><button class="btn pri">Guardar</button></div>
+</form></dialog>
+
+<!-- verificación -->
+<dialog id="dVerif"><div class="cuerpo">
+  <h3>Verificación en Meta</h3>
+  <div class="muted small" id="vNumero"></div>
+  <ul class="lista-ok" id="vLista"></ul>
+  <div class="pie"><button type="button" class="btn" data-cerrar>Cerrar</button></div>
+</div></dialog>
+
+<!-- prueba -->
+<dialog id="dProbar"><form method="dialog" id="fProbar">
+  <h3>Enviar mensaje de prueba</h3>
+  <p class="muted small" style="margin:0" id="pDesde"></p>
+  <label for="pPara">Para <span class="ayuda">con código de país, ej. 5491123456789. Con el número de prueba de Meta, solo destinatarios confirmados.</span></label>
+  <input type="tel" id="pPara" required>
+  <label>Tipo</label>
+  <div class="seg" id="pModo"><button type="button" data-modo="plantilla" class="sel">Plantilla</button><button type="button" data-modo="texto">Texto libre</button></div>
+  <div id="pPlantilla">
+    <label for="pNombre">Plantilla</label>
+    <input type="text" id="pNombre" value="hello_world">
+    <label for="pIdioma">Idioma</label>
+    <input type="text" id="pIdioma" value="en_US">
+  </div>
+  <div id="pTexto" hidden>
+    <label for="pMsg">Texto <span class="ayuda">solo funciona si el destinatario escribió en las últimas 24 h</span></label>
+    <input type="text" id="pMsg" value="Prueba desde wsp-api">
+  </div>
+  <div class="error" hidden></div>
+  <div id="pOk" hidden></div>
+  <div class="pie"><button type="button" class="btn" data-cerrar>Cerrar</button><button class="btn pri">Enviar</button></div>
+</form></dialog>
+
+<!-- registrar -->
+<dialog id="dRegistrar"><form method="dialog" id="fRegistrar">
+  <h3>Registrar número en la Cloud API</h3>
+  <p class="muted small">Solo para números propios (el número de prueba de Meta ya viene registrado). Usá el PIN de 6 dígitos de la verificación en dos pasos del número; si nunca se definió, este queda como PIN.</p>
+  <label for="rPin">PIN</label>
+  <input type="password" id="rPin" inputmode="numeric" pattern="\d{6}" maxlength="6" required autocomplete="off">
+  <div class="error" hidden></div>
+  <div class="pie"><button type="button" class="btn" data-cerrar>Cancelar</button><button class="btn pri">Registrar</button></div>
+</form></dialog>
+
+<!-- API key -->
+<dialog id="dKey"><form method="dialog" id="fKey">
+  <h3>Nueva API key</h3>
+  <div id="kForm">
+    <label for="kNombre">Nombre <span class="ayuda">qué app la usa, ej. "gestion-app PROD"</span></label>
+    <input type="text" id="kNombre" required maxlength="100">
+  </div>
+  <div id="kListo" hidden>
+    <p><b>Copiala ahora:</b> no se vuelve a mostrar. Va en la configuración de la app (por ejemplo <span class="mono">WSP_API_KEY</span>).</p>
+    <div class="clave"><code id="kClave"></code><button type="button" class="btn chico" id="kCopiar">Copiar</button></div>
+  </div>
+  <div class="error" hidden></div>
+  <div class="pie"><button type="button" class="btn" data-cerrar id="kCerrar">Cancelar</button><button class="btn pri" id="kCrear">Crear</button></div>
+</form></dialog>
+
+<!-- confirmación -->
+<dialog id="dConfirmar"><form method="dialog">
+  <h3 id="cTitulo"></h3>
+  <p class="muted" id="cTexto"></p>
+  <div class="pie"><button value="no" class="btn">Cancelar</button><button value="si" class="btn pri" id="cSi">Confirmar</button></div>
+</form></dialog>
+
+<div id="toast" hidden></div>
+
+<script>
+(() => {
+  // Detrás de IIS la app vive en /<carpeta>/: la base se calcula desde la URL de esta página
+  const BASE = location.pathname.replace(/\/admin\/?$/, '');
+  const $ = (s, r = document) => r.querySelector(s);
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fecha = (f) => (f ? new Date(f).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+  const guardado = { get: () => { try { return sessionStorage.getItem('wspAdmin') || ''; } catch { return ''; } }, set: (v) => { try { v ? sessionStorage.setItem('wspAdmin', v) : sessionStorage.removeItem('wspAdmin'); } catch { /* sin almacenamiento */ } } };
+
+  let token = guardado.get(), empresas = [], empresaId = null, numeros = [];
+
+  // ---------- API
+  async function api(metodo, ruta, cuerpo) {
+    const r = await fetch(BASE + '/api/admin' + ruta, { method: metodo, headers: { 'X-Admin-Token': token, ...(cuerpo ? { 'Content-Type': 'application/json' } : {}) }, body: cuerpo ? JSON.stringify(cuerpo) : undefined });
+    let d = null; try { d = await r.json(); } catch { /* sin cuerpo */ }
+    if (r.status === 401 && ruta !== '/empresas') { salir('La sesión no es válida: ingresá el token de nuevo.'); throw new Error('Token inválido'); }
+    if (!r.ok) throw Object.assign(new Error(textoError(d) || `Error HTTP ${r.status}`), { datos: d, status: r.status });
+    return d;
+  }
+  const PISTAS = {
+    131030: 'El destinatario no está en la lista permitida del número de prueba. Agregalo en Meta (Configuración de la API → Para); en Argentina probá con y sin el 9.',
+    131047: 'Pasaron más de 24 h desde el último mensaje de esa persona: solo se puede enviar una plantilla.',
+    132001: 'La plantilla no existe en ese idioma.',
+    190: 'El access token venció o es inválido: cargá uno permanente con "Editar".',
+    100: 'Meta no reconoce el identificador o el token no tiene permiso sobre él.',
+  };
+  function textoError(d) {
+    if (!d) return '';
+    let t = d.error || '';
+    if (d.codigoMeta && !t.includes(String(d.codigoMeta))) t += ` (código Meta ${d.codigoMeta})`;
+    if (d.detalle && !t.includes(d.detalle)) t += ` — ${d.detalle}`;
+    if (PISTAS[d.codigoMeta]) t += `\n${PISTAS[d.codigoMeta]}`;
+    return t;
+  }
+
+  // ---------- utilidades de interfaz
+  let tt;
+  function toast(msg, mal) { const t = $('#toast'); t.textContent = msg; t.className = mal ? 'mal' : ''; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), mal ? 6000 : 3000); }
+  function abrir(d) { $('.error', d) && ($('.error', d).hidden = true); d.showModal(); }
+  function errorEn(d, e) { const x = $('.error', d); x.style.whiteSpace = 'pre-line'; x.textContent = e.message; x.hidden = false; }
+  async function ocupado(btn, fn) { btn.disabled = true; try { return await fn(); } finally { btn.disabled = false; } }
+  function confirmar(titulo, texto, si = 'Confirmar') {
+    const d = $('#dConfirmar'); $('#cTitulo').textContent = titulo; $('#cTexto').textContent = texto; $('#cSi').textContent = si;
+    d.returnValue = ''; d.showModal();
+    return new Promise((ok) => d.addEventListener('close', () => ok(d.returnValue === 'si'), { once: true }));
+  }
+  document.addEventListener('click', (e) => {
+    const c = e.target.closest('[data-cerrar]'); if (c) c.closest('dialog').close();
+    const cp = e.target.closest('[data-copiar]'); if (cp) navigator.clipboard?.writeText(cp.dataset.copiar).then(() => toast('Copiado'));
+  });
+
+  // ---------- ingreso
+  function mostrar(logueado) {
+    $('#vistaLogin').hidden = logueado; $('#vistaApp').hidden = !logueado; $('#btnSalir').hidden = !logueado;
+    if (!logueado) setTimeout(() => $('#token').focus(), 0);
+  }
+  function salir(msg) {
+    token = ''; guardado.set(''); mostrar(false);
+    const e = $('#errLogin'); e.textContent = msg || ''; e.hidden = !msg;
+  }
+  $('#fLogin').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); token = $('#token').value.trim();
+    try { await cargarEmpresas(); guardado.set(token); $('#token').value = ''; mostrar(true); }
+    catch (e) { salir(e.status === 401 ? 'Token incorrecto.' : e.message); }
+  });
+  $('#btnSalir').onclick = () => salir();
+
+  // ---------- empresas
+  async function cargarEmpresas(seleccionar) {
+    empresas = await api('GET', '/empresas');
+    if (seleccionar) empresaId = seleccionar;
+    if (!empresas.some((e) => e.id === empresaId)) empresaId = empresas[0]?.id ?? null;
+    pintarEmpresas();
+    if (empresaId) await cargarEmpresa();
+  }
+  function pintarEmpresas() {
+    $('#listaEmpresas').innerHTML = empresas.map((e) => `<button class="emp ${e.id === empresaId ? 'sel' : ''}" data-emp="${e.id}"><span>${esc(e.nombre)}</span>${e.activa ? '' : '<span class="badge mal">inactiva</span>'}</button>`).join('') || '<p class="muted small" style="padding:0 10px">Sin empresas</p>';
+    $('#sinEmpresas').hidden = empresas.length > 0; $('#panelEmpresa').hidden = !empresaId;
+  }
+  $('#listaEmpresas').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-emp]'); if (!b) return;
+    empresaId = Number(b.dataset.emp); pintarEmpresas(); cargarEmpresa(); $('#aside').classList.remove('abierto');
+  });
+  $('#btnMenu').onclick = () => $('#aside').classList.toggle('abierto');
+  const empresa = () => empresas.find((e) => e.id === empresaId);
+  async function cargarEmpresa() {
+    const e = empresa(); if (!e) return;
+    $('#empNombre').textContent = e.nombre;
+    $('#empEstado').innerHTML = e.activa ? '<span class="badge ok">activa</span>' : '<span class="badge mal">inactiva</span>';
+    await Promise.all([cargarNumeros(), cargarKeys()]);
+  }
+
+  let editEmpresa = null;
+  function dialogoEmpresa(e) {
+    editEmpresa = e || null;
+    $('#tEmpresa').textContent = e ? 'Editar empresa' : 'Nueva empresa';
+    $('#eNombre').value = e?.nombre || ''; $('#eActiva').checked = e ? e.activa : true; $('#lEActiva').hidden = !e;
+    abrir($('#dEmpresa'));
+  }
+  $('#btnNuevaEmpresa').onclick = () => dialogoEmpresa();
+  document.addEventListener('click', (e) => { if (e.target.closest('[data-accion="nuevaEmpresa"]')) dialogoEmpresa(); });
+  $('#btnEditarEmpresa').onclick = () => dialogoEmpresa(empresa());
+  $('#fEmpresa').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const d = $('#dEmpresa');
+    await ocupado(ev.submitter, async () => {
+      try {
+        const cuerpo = { nombre: $('#eNombre').value.trim() };
+        const r = editEmpresa ? await api('PATCH', `/empresas/${editEmpresa.id}`, { ...cuerpo, activa: $('#eActiva').checked }) : await api('POST', '/empresas', cuerpo);
+        d.close(); await cargarEmpresas(r.id); toast(editEmpresa ? 'Empresa actualizada' : 'Empresa creada');
+      } catch (e) { errorEn(d, e); }
+    });
+  });
+
+  // ---------- pestañas
+  document.querySelectorAll('.tab').forEach((t) => t.onclick = () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('sel', x === t));
+    $('#tabNumeros').hidden = t.dataset.tab !== 'numeros'; $('#tabKeys').hidden = t.dataset.tab !== 'keys';
+  });
+
+  // ---------- números
+  const CALIDAD = { GREEN: ['ok', 'calidad alta'], YELLOW: ['warn', 'calidad media'], RED: ['mal', 'calidad baja'] };
+  async function cargarNumeros() {
+    numeros = await api('GET', `/empresas/${empresaId}/numeros`);
+    const act = numeros.filter((n) => n.activo).length;
+    $('#resNumeros').textContent = numeros.length ? `${numeros.length} número${numeros.length > 1 ? 's' : ''}${act < numeros.length ? ` · ${act} activo${act === 1 ? '' : 's'}` : ''}` : '';
+    if (!numeros.length) {
+      $('#numeros').innerHTML = `<div class="vacio"><b>Esta empresa todavía no tiene números</b><p>Agregá el número de prueba de Meta para empezar, o uno propio ya registrado.</p><button class="btn pri" data-nuevo-numero>+ Agregar número</button></div>`;
+      return;
+    }
+    $('#numeros').innerHTML = `<div class="grilla">${numeros.map(tarjeta).join('')}</div>`;
+  }
+  function tarjeta(n) {
+    const cal = CALIDAD[n.calidad];
+    const badges = [n.predeterminado && '<span class="badge ok">predeterminado</span>', !n.activo && '<span class="badge mal">inactivo</span>', cal && `<span class="badge ${cal[0]}">${cal[1]}</span>`, !n.numeroVisible && '<span class="badge warn">sin verificar</span>'].filter(Boolean).join('');
+    return `<article class="card ${n.activo ? '' : 'inactivo'}" data-num="${n.id}">
+      <div class="cab"><div><div class="muted small">${esc(n.nombre)}</div><div class="tel">${n.numeroVisible ? '+' + esc(String(n.numeroVisible).replace(/^\+/, '')) : '<span class="muted">Número sin datos de Meta</span>'}</div>${n.nombreVerificado ? `<div class="small">${esc(n.nombreVerificado)}</div>` : ''}</div><div class="badges">${badges}</div></div>
+      <dl>
+        <dt>Phone number ID</dt><dd class="mono"><span class="copiar" data-copiar="${esc(n.phoneNumberId)}" title="Copiar">${esc(n.phoneNumberId)}</span></dd>
+        <dt>WABA ID</dt><dd class="mono"><span class="copiar" data-copiar="${esc(n.wabaId)}" title="Copiar">${esc(n.wabaId)}</span></dd>
+        <dt>Id interno</dt><dd class="mono">${n.id}</dd>
+      </dl>
+      <div class="acc">
+        <button class="btn chico" data-op="verificar">Verificar</button>
+        <button class="btn chico" data-op="probar" ${n.activo ? '' : 'disabled'}>Probar envío</button>
+        <button class="btn chico" data-op="editar">Editar</button>
+        ${n.predeterminado || !n.activo ? '' : '<button class="btn chico" data-op="predeterminado">Hacer predeterminado</button>'}
+        <button class="btn chico" data-op="registrar">Registrar</button>
+        <button class="btn chico ${n.activo ? 'peligro' : ''}" data-op="activo">${n.activo ? 'Desactivar' : 'Activar'}</button>
+      </div>
+    </article>`;
+  }
+  $('#numeros').addEventListener('click', async (e) => {
+    if (e.target.closest('[data-nuevo-numero]')) return dialogoNumero();
+    const b = e.target.closest('[data-op]'); if (!b) return;
+    const n = numeros.find((x) => x.id === Number(b.closest('[data-num]').dataset.num));
+    const op = b.dataset.op;
+    if (op === 'editar') return dialogoNumero(n);
+    if (op === 'verificar') return ocupado(b, () => verificar(n));
+    if (op === 'probar') return dialogoProbar(n);
+    if (op === 'registrar') { numSel = n; $('#rPin').value = ''; return abrir($('#dRegistrar')); }
+    if (op === 'predeterminado') return ocupado(b, async () => { try { await api('PATCH', `/numeros/${n.id}`, { predeterminado: true }); await cargarNumeros(); toast('Número predeterminado actualizado'); } catch (x) { toast(x.message, true); } });
+    if (op === 'activo') {
+      if (n.activo && !(await confirmar('Desactivar número', `Las apps no van a poder enviar desde ${n.nombre}. Los mensajes que lleguen por webhook se siguen registrando.`, 'Desactivar'))) return;
+      return ocupado(b, async () => { try { await api('PATCH', `/numeros/${n.id}`, { activo: !n.activo }); await cargarNumeros(); toast(n.activo ? 'Número desactivado' : 'Número activado'); } catch (x) { toast(x.message, true); } });
+    }
+  });
+  $('#btnNuevoNumero').onclick = () => dialogoNumero();
+
+  let numSel = null;
+  function dialogoNumero(n) {
+    numSel = n || null;
+    $('#tNumero').textContent = n ? `Editar ${n.nombre}` : 'Agregar número';
+    $('#nNombre').value = n?.nombre || ''; $('#nPhone').value = n?.phoneNumberId || ''; $('#nWaba').value = n?.wabaId || ''; $('#nToken').value = '';
+    $('#nPhone').readOnly = !!n; $('#nToken').required = !n;
+    $('#aToken').textContent = n ? 'dejar vacío para mantener el actual' : 'token de un usuario del sistema (empieza con EAA…)';
+    $('#nPred').checked = n ? n.predeterminado : !numeros.some((x) => x.predeterminado);
+    $('#nActivo').checked = n ? n.activo : true; $('#lNActivo').hidden = !n;
+    abrir($('#dNumero'));
+  }
+  $('#fNumero').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const d = $('#dNumero');
+    await ocupado(ev.submitter, async () => {
+      try {
+        const c = { nombre: $('#nNombre').value.trim() || undefined, wabaId: $('#nWaba').value.trim(), predeterminado: $('#nPred').checked };
+        const tk = $('#nToken').value.trim(); if (tk) c.accessToken = tk;
+        let r;
+        if (numSel) r = await api('PATCH', `/numeros/${numSel.id}`, { ...c, activo: $('#nActivo').checked });
+        else r = await api('POST', `/empresas/${empresaId}/numeros`, { ...c, phoneNumberId: $('#nPhone').value.trim() });
+        d.close(); await cargarNumeros();
+        if (r.aviso) toast(r.aviso, true); else toast(numSel ? 'Número actualizado' : `Número agregado: ${r.numeroVisible ? '+' + r.numeroVisible : r.phoneNumberId}`);
+        if (!numSel && !r.aviso) verificar(r);
+      } catch (e) { errorEn(d, e); }
+    });
+  });
+
+  // Diagnóstico: datos del número en Meta y suscripción de la cuenta al webhook
+  async function verificar(n) {
+    const d = $('#dVerif'), ul = $('#vLista');
+    $('#vNumero').textContent = `${n.nombre} · Phone number ID ${n.phoneNumberId}`;
+    ul.innerHTML = '<li><span class="ico warn">…</span><span>Consultando a Meta…</span></li>';
+    if (!d.open) d.showModal();
+    let r; try { r = await api('GET', `/numeros/${n.id}/verificar`); } catch (e) { ul.innerHTML = item('mal', 'No se pudo verificar', esc(e.message)); return; }
+    const m = r.meta || {}, items = [];
+    if (r.errorNumero) items.push(item('mal', 'Meta no reconoce el número con este token', esc(r.errorNumero) + '<br>Revisá el Phone number ID y que el token tenga permiso sobre la cuenta.'));
+    else {
+      items.push(item('ok', `Número y token correctos: +${esc(String(m.display_phone_number || '').replace(/^\+/, ''))}`, `${esc(m.verified_name || '')}${m.platform_type ? ` · plataforma ${esc(m.platform_type)}` : ''}`));
+      if (m.code_verification_status && m.code_verification_status !== 'VERIFIED') items.push(item('warn', 'El número no completó la verificación por código', `Estado: ${esc(m.code_verification_status)}. Con el número de prueba de Meta es normal; si es un número propio, completala en el WhatsApp Manager.`));
+      if (m.quality_rating) items.push(item(m.quality_rating === 'GREEN' ? 'ok' : m.quality_rating === 'YELLOW' ? 'warn' : 'mal', `Calidad: ${esc((CALIDAD[m.quality_rating] || [, m.quality_rating])[1])}`, m.quality_rating === 'GREEN' ? '' : 'Si baja, Meta limita los envíos. Revisá quejas y bloqueos de los destinatarios.'));
+    }
+    if (r.errorSuscripcion) items.push(item('mal', 'No se pudo consultar la suscripción al webhook', esc(r.errorSuscripcion)));
+    else if (r.webhookSuscripto) items.push(item('ok', 'La cuenta envía los webhooks a la app', (r.appsSuscriptas || []).map((a) => esc(a.name || a.id || '')).filter(Boolean).join(', ')));
+    else items.push(item('mal', 'La cuenta no tiene la app suscripta: no van a llegar mensajes', `<button class="btn chico pri" id="vSuscribir" style="margin-top:6px">Suscribir ahora</button>`));
+    ul.innerHTML = items.join('');
+    const s = $('#vSuscribir'); if (s) s.onclick = () => ocupado(s, async () => { try { await api('POST', `/numeros/${n.id}/suscribir-webhook`); toast('Cuenta suscripta al webhook'); verificar(n); } catch (e) { toast(e.message, true); } });
+    await cargarNumeros();
+  }
+  const item = (tipo, titulo, detalle) => `<li><span class="ico ${tipo}">${tipo === 'ok' ? '✓' : tipo === 'mal' ? '✕' : '!'}</span><div><b>${titulo}</b>${detalle ? `<div class="muted small">${detalle}</div>` : ''}</div></li>`;
+
+  // Prueba de envío
+  let modo = 'plantilla';
+  function dialogoProbar(n) {
+    numSel = n; $('#pDesde').textContent = `Desde ${n.nombre}${n.numeroVisible ? ' (+' + n.numeroVisible + ')' : ''}`;
+    $('#pOk').hidden = true; abrir($('#dProbar')); $('#pPara').focus();
+  }
+  $('#pModo').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-modo]'); if (!b) return; modo = b.dataset.modo;
+    $('#pModo').querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
+    $('#pPlantilla').hidden = modo !== 'plantilla'; $('#pTexto').hidden = modo !== 'texto';
+  });
+  $('#fProbar').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const d = $('#dProbar'); $('.error', d).hidden = true; $('#pOk').hidden = true;
+    await ocupado(ev.submitter, async () => {
+      try {
+        const c = { para: $('#pPara').value.trim(), ...(modo === 'texto' ? { texto: $('#pMsg').value } : { plantilla: $('#pNombre').value.trim(), idioma: $('#pIdioma').value.trim() }) };
+        const r = await api('POST', `/numeros/${numSel.id}/probar`, c);
+        const ok = $('#pOk'); ok.className = 'clave'; ok.innerHTML = `<span class="ico ok">✓</span><span>Meta aceptó el mensaje (id ${r.id}, estado ${esc(r.estado)}). Debería llegar en unos segundos.</span>`; ok.hidden = false;
+      } catch (e) { errorEn(d, e); }
+    });
+  });
+
+  $('#fRegistrar').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const d = $('#dRegistrar');
+    await ocupado(ev.submitter, async () => {
+      try { await api('POST', `/numeros/${numSel.id}/registrar`, { pin: $('#rPin').value }); d.close(); toast('Número registrado en la Cloud API'); verificar(numSel); }
+      catch (e) { errorEn(d, e); }
+    });
+  });
+
+  // ---------- API keys
+  async function cargarKeys() {
+    const ks = await api('GET', `/empresas/${empresaId}/api-keys`);
+    $('#keys').innerHTML = ks.length ? `<table class="tabla"><thead><tr><th>Nombre</th><th>Clave</th><th>Estado</th><th class="opc">Último uso</th><th class="opc">Creada</th><th></th></tr></thead><tbody>${ks.map((k) => `<tr>
+      <td>${esc(k.nombre)}</td><td class="mono">${esc(k.prefijo)}…</td>
+      <td>${k.activa ? '<span class="badge ok">activa</span>' : '<span class="badge mal">revocada</span>'}</td>
+      <td class="opc small">${fecha(k.ultimoUso)}</td><td class="opc small">${fecha(k.fecha)}</td>
+      <td style="text-align:right">${k.activa ? `<button class="btn chico peligro" data-revocar="${k.id}" data-nombre="${esc(k.nombre)}">Revocar</button>` : ''}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="vacio"><b>Sin API keys</b><p>Creá una por cada app o ambiente que use esta empresa.</p></div>';
+  }
+  $('#keys').addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-revocar]'); if (!b) return;
+    if (!(await confirmar('Revocar API key', `La app que usa "${b.dataset.nombre}" va a dejar de poder enviar y consultar mensajes. No se puede deshacer.`, 'Revocar'))) return;
+    try { await api('DELETE', `/empresas/${empresaId}/api-keys/${b.dataset.revocar}`); await cargarKeys(); toast('API key revocada'); } catch (x) { toast(x.message, true); }
+  });
+  $('#btnNuevaKey').onclick = () => {
+    $('#kForm').hidden = false; $('#kListo').hidden = true; $('#kCrear').hidden = false; $('#kCerrar').textContent = 'Cancelar'; $('#kNombre').value = '';
+    abrir($('#dKey'));
+  };
+  $('#fKey').addEventListener('submit', async (ev) => {
+    ev.preventDefault(); const d = $('#dKey');
+    await ocupado(ev.submitter, async () => {
+      try {
+        const r = await api('POST', `/empresas/${empresaId}/api-keys`, { nombre: $('#kNombre').value.trim() });
+        $('#kClave').textContent = r.apiKey; $('#kForm').hidden = true; $('#kListo').hidden = false; $('#kCrear').hidden = true; $('#kCerrar').textContent = 'Listo, ya la copié';
+        await cargarKeys();
+      } catch (e) { errorEn(d, e); }
+    });
+  });
+  $('#kCopiar').onclick = () => navigator.clipboard?.writeText($('#kClave').textContent).then(() => toast('API key copiada'));
+  $('#dKey').addEventListener('close', () => { $('#kClave').textContent = ''; });
+
+  // ---------- inicio
+  fetch(BASE + '/').then((r) => r.json()).then((d) => { $('#version').textContent = 'v' + d.version + ' · administración'; }).catch(() => {});
+  if (token) cargarEmpresas().then(() => mostrar(true)).catch((e) => salir(e.status === 401 ? 'La sesión venció: ingresá el token de nuevo.' : e.message));
+  else mostrar(false);
+})();
+</script>
+</body>
+</html>

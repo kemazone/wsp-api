@@ -27,6 +27,10 @@ function crearApp({ pedidos = (req, res, next) => next() } = {}) {
     app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(doc, { customSiteTitle: 'wsp-api', swaggerOptions: { persistAuthorization: true } }));
   } catch (e) { console.warn('Documentación /api/docs no disponible:', e.message); }
 
+  // Pantalla de administración (empresas, números, API keys). Pide el ADMIN_TOKEN; sin él no muestra datos.
+  const admin = path.join(__dirname, 'public', 'admin.html');
+  app.get(['/admin', '/admin/'], (req, res) => res.set('Cache-Control', 'no-store').sendFile(admin));
+
   app.use('/api', pedidos, require('./routes'));
   app.use(errores);
   return app;
