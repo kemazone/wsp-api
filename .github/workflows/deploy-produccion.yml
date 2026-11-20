@@ -1,0 +1,74 @@
+# Despliegue a producción, siempre a mano (Actions > "Deploy a producción" > Run workflow). Ver README > Despliegue
+# Solo se puede desplegar una versión que ya pasó por TEST (tiene el tag v<version>).
+name: Deploy a producción
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versión a desplegar (por ejemplo 0.1.0). Tiene que haber pasado por TEST.'
+        required: true
+      ambiente:
+        description: 'Ambiente de producción'
+        type: choice
+        options: [wsp-api]
+        default: wsp-api
+      respaldo:
+        description: 'Copia de seguridad de la base antes de actualizar'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  preparar:
+    name: Verificar versión
+    runs-on: ubuntu-latest
+    outputs:
+      ambientes: ${{ steps.ambientes.outputs.lista }}
+    steps:
+      - name: Validar versión y tag
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "::error::Versión inválida: '$VERSION' (formato esperado 0.1.0)"; exit 1; fi
+          if ! gh api "repos/${{ github.repository }}/git/ref/tags/v$VERSION" --silent; then
+            echo "::error::No existe el tag v$VERSION: la versión todavía no pasó por TEST (o falta subirla en package.json)."; exit 1
+          fi
+      - name: Ambientes
+        id: ambientes
+        env:
+          AMBIENTE: ${{ inputs.ambiente }}
+        run: |
+          echo "lista=[\"$AMBIENTE\"]" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Desplegar en ${{ matrix.ambiente }}
+    needs: preparar
+    runs-on: [self-hosted, Windows, deploy-servidor]
+    timeout-minutes: 25
+    strategy:
+      matrix:
+        ambiente: ${{ fromJson(needs.preparar.outputs.ambientes) }}
+      max-parallel: 1 # uno por vez: si falla el primero, el segundo no se toca
+      fail-fast: true
+    concurrency:
+      group: deploy-${{ matrix.ambiente }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+      - name: Desplegar
+        timeout-minutes: 15
+        shell: powershell
+        env:
+          DESTINO: D:\DEPLOY\${{ matrix.ambiente }}
+          DIR_RESPALDOS: ${{ vars.DIR_RESPALDOS || 'D:\RESPALDOS' }}
+          RESPALDO: ${{ inputs.respaldo }}
+        run: |
+          $p = @{ Origen = $env:GITHUB_WORKSPACE; Destino = $env:DESTINO; DirRespaldos = $env:DIR_RESPALDOS }
+          if ($env:RESPALDO -ne 'true') { $p.SinRespaldo = $true }
+          & .\scripts\deploy\deploy.ps1 @p

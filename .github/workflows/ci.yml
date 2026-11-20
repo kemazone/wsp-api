@@ -1,0 +1,79 @@
+# Integración continua y despliegue a TEST (mismo circuito que gestion-app; ver README > Despliegue)
+# - Cada push (cualquier rama) y cada PR: corre los tests en GitHub.
+# - Push a main con tests OK: despliega en TEST (D:\DEPLOY\wsp-api-test) y marca la versión con el tag v<version>.
+# - "Run workflow" a mano: despliega en TEST la rama/tag/commit que se indique, sin marcar versión.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Rama, tag o commit a desplegar en TEST'
+        required: true
+        default: main
+
+permissions:
+  contents: write # para crear el tag de versión
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Instalar dependencias
+        run: if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm install --no-audit --no-fund; fi
+      - name: Tests
+        run: npm test
+
+  qa:
+    name: Desplegar en TEST (wsp-api-test)
+    needs: tests
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, Windows, deploy-servidor]
+    timeout-minutes: 25
+    concurrency:
+      group: deploy-wsp-api-test
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Desplegar
+        timeout-minutes: 15
+        shell: powershell
+        env:
+          DIR_RESPALDOS: ${{ vars.DIR_RESPALDOS || 'D:\RESPALDOS' }}
+        run: .\scripts\deploy\deploy.ps1 -Origen "$env:GITHUB_WORKSPACE" -Destino 'D:\DEPLOY\wsp-api-test' -DirRespaldos $env:DIR_RESPALDOS
+      - name: Marcar versión (tag)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: powershell
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Crea el tag con la API de GitHub (no necesita Git instalado en el servidor)
+          [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+          $v = (Get-Content package.json -Raw -Encoding UTF8 | ConvertFrom-Json).version
+          $tag = 'v' + $v
+          $h = @{ Authorization = 'Bearer ' + $env:GH_TOKEN; Accept = 'application/vnd.github+json'; 'User-Agent' = 'ci-wsp-api' }
+          $api = 'https://api.github.com/repos/' + $env:GITHUB_REPOSITORY + '/git'
+          $existe = $true
+          try { Invoke-RestMethod ($api + '/ref/tags/' + $tag) -Headers $h | Out-Null }
+          catch { if ($_.Exception.Response.StatusCode.value__ -eq 404) { $existe = $false } else { throw } }
+          if ($existe) {
+            Write-Host ('::warning::La version ' + $v + ' ya estaba marcada (tag ' + $tag + ' de un commit anterior). Este cambio quedo en TEST pero NO se puede llevar a produccion hasta subir la version en package.json.')
+            exit 0
+          }
+          $body = @{ ref = 'refs/tags/' + $tag; sha = $env:GITHUB_SHA } | ConvertTo-Json
+          Invoke-RestMethod ($api + '/refs') -Method Post -Headers $h -Body $body -ContentType 'application/json' | Out-Null
+          Write-Host ('Version ' + $v + ' marcada como ' + $tag + ': ya se puede desplegar en produccion.')
+          ('TEST actualizado a **v' + $v + '** (tag ' + $tag + ').') | Out-File -Append -Encoding utf8 $env:GITHUB_STEP_SUMMARY
