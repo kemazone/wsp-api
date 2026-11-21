@@ -197,7 +197,7 @@
   <p class="muted small" style="margin:0">Los identificadores están en Meta for Developers → tu app → <b>WhatsApp → Configuración de la API</b>.</p>
   <label for="nNombre">Nombre <span class="ayuda">para reconocerlo (ej. "Ventas", "Prueba")</span></label>
   <input type="text" id="nNombre" maxlength="100">
-  <label for="nPhone">Identificador del número de teléfono <span class="ayuda">(Phone number ID)</span></label>
+  <label for="nPhone">Identificador del número de teléfono <span class="ayuda">(Phone number ID): un número largo que asigna Meta, <b>no</b> el número de teléfono</span></label>
   <input type="text" id="nPhone" class="mono" inputmode="numeric" required>
   <label for="nWaba">Identificador de la cuenta de WhatsApp Business <span class="ayuda">(WABA ID)</span></label>
   <input type="text" id="nWaba" class="mono" inputmode="numeric" required>
@@ -447,7 +447,7 @@
     numSel = n || null;
     $('#tNumero').textContent = n ? `Editar ${n.nombre}` : 'Agregar número';
     $('#nNombre').value = n?.nombre || ''; $('#nPhone').value = n?.phoneNumberId || ''; $('#nWaba').value = n?.wabaId || ''; $('#nToken').value = '';
-    $('#nPhone').readOnly = !!n; $('#nToken').required = !n;
+    $('#nToken').required = !n;
     $('#aToken').textContent = n ? 'dejar vacío para mantener el actual' : 'token de un usuario del sistema (empieza con EAA…)';
     $('#nPred').checked = n ? n.predeterminado : !numeros.some((x) => x.predeterminado);
     $('#nActivo').checked = n ? n.activo : true; $('#lNActivo').hidden = !n;
@@ -460,11 +460,11 @@
         const c = { nombre: $('#nNombre').value.trim() || undefined, wabaId: $('#nWaba').value.trim(), predeterminado: $('#nPred').checked };
         const tk = $('#nToken').value.trim(); if (tk) c.accessToken = tk;
         let r;
-        if (numSel) r = await api('PATCH', `/numeros/${numSel.id}`, { ...c, activo: $('#nActivo').checked });
+        if (numSel) r = await api('PATCH', `/numeros/${numSel.id}`, { ...c, phoneNumberId: $('#nPhone').value.trim(), activo: $('#nActivo').checked });
         else r = await api('POST', `/empresas/${empresaId}/numeros`, { ...c, phoneNumberId: $('#nPhone').value.trim() });
         d.close(); await cargarNumeros();
         if (r.aviso) toast(r.aviso, true); else toast(numSel ? 'Número actualizado' : `Número agregado: ${r.numeroVisible ? '+' + r.numeroVisible : r.phoneNumberId}`);
-        if (!numSel && !r.aviso) verificar(r);
+        if (!r.aviso && (!numSel || c.accessToken || $('#nPhone').value.trim() !== numSel.phoneNumberId)) verificar(r);
       } catch (e) { errorEn(d, e); }
     });
   });

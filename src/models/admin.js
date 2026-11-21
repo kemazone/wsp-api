@@ -6,6 +6,15 @@ const { cifrar, nuevaApiKey } = require('../seguridad/secretos');
 const { token } = require('./mensajes');
 
 const err = (msg, status = 400) => Object.assign(new Error(msg), { status });
+// Los identificadores de Meta son numéricos y no son el número de teléfono (un error frecuente al cargarlos)
+function validarIds(b, todos) {
+  const campos = { phoneNumberId: 'Phone number ID ("Identificador del número de teléfono")', wabaId: 'WABA ID ("Identificador de la cuenta de WhatsApp Business")' };
+  for (const [c, nombre] of Object.entries(campos)) {
+    if (!todos && b[c] === undefined) continue;
+    const v = String(b[c] || '').trim();
+    if (!/^\d{6,25}$/.test(v)) throw err(`${nombre} inválido: '${v}'. Es un identificador numérico de Meta, no el número de teléfono. Está en developers.facebook.com → tu app → WhatsApp → Configuración de la API.`);
+  }
+}
 const empresaJson = (e) => ({ id: e.id, nombre: e.nombre, activa: e.activa, fecha: e.createdAt });
 
 // ---- empresas
@@ -41,6 +50,7 @@ async function completarDesdeMeta(n) {
 async function crearNumero(empresaId, b = {}) {
   await R.empresas.obtener(empresaId);
   for (const c of ['phoneNumberId', 'wabaId', 'accessToken']) if (!String(b[c] || '').trim()) throw err(`Falta ${c}`);
+  validarIds(b, true);
   if (await R.numeros.porPhoneNumberId(b.phoneNumberId)) throw err('Ese phoneNumberId ya está dado de alta', 409);
   const n = await R.numeros.crear({
     EmpresaId: Number(empresaId), nombre: String(b.nombre || b.phoneNumberId).slice(0, 100), phoneNumberId: String(b.phoneNumberId).trim(),
@@ -54,7 +64,14 @@ async function crearNumero(empresaId, b = {}) {
 
 async function actualizarNumero(id, b = {}) {
   const n = await R.numeros.porId(id);
+  validarIds(b, false);
   const cambios = {};
+  if (b.phoneNumberId && String(b.phoneNumberId).trim() !== n.phoneNumberId) {
+    const otro = await R.numeros.porPhoneNumberId(String(b.phoneNumberId).trim());
+    if (otro) throw err('Ese phoneNumberId ya está dado de alta', 409);
+    // Al cambiar de número se borran los datos que había traído Meta del anterior
+    Object.assign(cambios, { phoneNumberId: String(b.phoneNumberId).trim(), numeroVisible: null, nombreVerificado: null, calidad: null });
+  }
   if (b.nombre) cambios.nombre = String(b.nombre).slice(0, 100);
   if (b.wabaId) cambios.wabaId = String(b.wabaId).trim();
   if (b.accessToken) cambios.accessToken = cifrar(String(b.accessToken).trim());
@@ -62,6 +79,8 @@ async function actualizarNumero(id, b = {}) {
   if (typeof b.predeterminado === 'boolean') cambios.predeterminado = b.predeterminado;
   await n.update(cambios);
   if (cambios.predeterminado) await R.numeros.quitarPredeterminado(n.EmpresaId, n.id);
+  // Si cambió el identificador o el token, se vuelve a consultar a Meta para completar los datos visibles
+  if (cambios.phoneNumberId || cambios.accessToken) { try { await completarDesdeMeta(n); } catch (e) { return { ...P.numero(n), aviso: `Se guardó, pero Meta no confirmó el número: ${e.message}` }; } }
   return P.numero(n);
 }
 

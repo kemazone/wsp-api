@@ -1,6 +1,6 @@
 {
   "name": "wsp-api",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "API REST propia para WhatsApp (Cloud API de Meta): envío, recepción, estados y reenvío de eventos a las apps de la plataforma",
   "main": "src/server.js",
   "private": true,
