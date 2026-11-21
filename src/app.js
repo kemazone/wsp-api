@@ -31,6 +31,18 @@ function crearApp({ pedidos = (req, res, next) => next() } = {}) {
   const admin = path.join(__dirname, 'public', 'admin.html');
   app.get(['/admin', '/admin/'], (req, res) => res.set('Cache-Control', 'no-store').sendFile(admin));
 
+  // Política de privacidad pública (Meta la exige para pasar la app a Live). Datos del titular: PRIVACIDAD_* en el .env
+  app.get(['/privacidad', '/eliminacion-datos'], (req, res) => {
+    const e = process.env, esc = (v) => String(v || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const titular = esc(e.PRIVACIDAD_TITULAR || 'Kema'), email = esc(e.PRIVACIDAD_EMAIL);
+    const html = fs.readFileSync(path.join(__dirname, 'public', 'privacidad.html'), 'utf8')
+      .replace(/{{TITULAR}}/g, titular)
+      .replace(/{{FECHA}}/g, esc(e.PRIVACIDAD_FECHA || '20/11/2026'))
+      .replace('{{CONTACTO_LISTA}}', email ? `; o</li><li>escribinos a <a href="mailto:${email}">${email}</a> indicando el número de WhatsApp.` : '.')
+      .replace('{{CONTACTO_TEXTO}}', email ? ` · <a href="mailto:${email}">${email}</a>` : ' · por WhatsApp, en el mismo número con el que nos comunicamos.');
+    res.type('html').send(html);
+  });
+
   app.use('/api', pedidos, require('./routes'));
   app.use(errores);
   return app;
